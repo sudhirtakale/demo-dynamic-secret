@@ -1,0 +1,41 @@
+name: Fetch Postgres Dynamic Secrets
+
+on: push
+
+jobs:
+
+  fetch_postgres_dynamic_secrets:
+    runs-on: ubuntu-latest
+    name: Fetch Postgres Dynamic Secrets
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+    
+    - name: Fetch dynamic secrets from Akeyless
+      id: fetch-dynamic-secrets
+      uses: akeyless-community/akeyless-github-action@v1.0.1
+      with:
+        access-id: ${{ secrets.ACCESS_ID }}
+        dynamic-secrets: |
+          - name: "/postgres"
+            output-name: "postgres_dynamic_secret"
+        access-type: jwt
+        export-secrets-to-outputs: true
+        export-secrets-to-environment: true
+        gateway-url: "https://csm.thalescryptolabs.com/akeyless-api/v2/"
+
+    # ***** KEY TAKEAWAY *****
+    #
+    # STEP 1 - Export Dynamic Secret's keys to env vars
+    - name: Export Secrets to Environment
+      run: |
+        echo '${{ steps.fetch-dynamic-secrets.outputs.postgres_dynamic_secret }}' | jq -r 'to_entries|map("POSTGRES_\(.key|ascii_upcase)=\(.value|tostring)")|.[]' >> $GITHUB_ENV
+
+    # STEP 2 - You can now access each secret separately as environment variables
+    - name: Verify Vars
+      run: |
+       
+        echo "username: ${{ env.POSTGRES_USERNAME }}" >> secrets.txt
+        echo "password: ${{ env.POSTGRES_PASSWORD }}" >> secrets.txt
